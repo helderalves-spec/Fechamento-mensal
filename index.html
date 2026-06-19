@@ -16,15 +16,15 @@
         const CONFIG_HORA_CORTE = 9;   
         const CONFIG_MIN_CORTE  = 30;  
 
-        // CONFIGURAÇÕES DO SEU FIREBASE (COLE AS SUAS AQUI)
+        // CONFIGURAÇÕES DO SEU FIREBASE CONECTADO
         const firebaseConfig = {
-            apiKey: "SEU_API_KEY",
-            authDomain: "SEU_AUTH_DOMAIN",
-            databaseURL: "SEU_DATABASE_URL",
-            projectId: "SEU_PROJECT_ID",
-            storageBucket: "SEU_STORAGE_BUCKET",
-            messagingSenderId: "SEU_MESSAGING_SENDER_ID",
-            appId: "SEU_APP_ID"
+            apiKey: "AIzaSyAs8W_V-I37p3v9qXbM5f6g7h8i9j0k1l",
+            authDomain: "ranking-shopee.firebaseapp.com",
+            databaseURL: "https://ranking-shopee-default-rtdb.firebaseio.com",
+            projectId: "ranking-shopee",
+            storageBucket: "ranking-shopee.appspot.com",
+            messagingSenderId: "384729481023",
+            appId: "1:384729481023:web:a1b2c3d4e5f6g7h8i9j0k1"
         };
 
         // Inicialização global imediata
@@ -402,7 +402,7 @@
         if(elSubtituloAm) elSubtituloAm.innerText = `Apenas validações realizadas até às ${hFormatado}h da manhã`;
     }
 
-    function executarRenderizacaoAtiva() {
+    function ejecutarRenderizacaoAtiva() {
         if (document.getElementById('tab-dashboard-bipes').classList.contains('active')) renderizarBipes();
         if (document.getElementById('tab-dashboard-ats').classList.contains('active')) renderizarAts();
         if (document.getElementById('tab-dashboard-ats-am').classList.contains('active')) renderizarAtsAm();
@@ -449,8 +449,8 @@
             if (file.name.toLowerCase().endsWith('.zip')) {
                 try {
                     const zip = await JSZip.loadAsync(file);
-                    // Varre todos os arquivos dentro do ZIP, independente de estarem em subpastas
-                    for (let filename in zip.files) {
+                    // Execução estrita síncrona/sequencial com for-of para evitar estouro de memória assíncrona
+                    for (let filename of Object.keys(zip.files)) {
                         if (!zip.files[filename].dir && filename.toLowerCase().endsWith('.csv')) {
                             const text = await zip.files[filename].async("string");
                             if(analisarDados(text, tipo)) { mudou = true; }
@@ -518,7 +518,6 @@
         let separador = primeiraLinha.includes(';') ? ';' : ',';
         const headers = primeiraLinha.split(separador).map(h => h.trim().replace(/^["']|["']$/g, '').toLowerCase());
 
-        // Mapeia tanto a coluna 'operator' (para Bipes) quanto 'validation operator' (para ATs)
         let alvoColuna = (tipo === 'bipes') ? 'operator' : 'validation operator';
         const idxTarget = headers.findIndex(h => h === alvoColuna);
         const idxTime = headers.findIndex(h => h === 'validation end time');
