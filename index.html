@@ -449,12 +449,14 @@
             if (file.name.toLowerCase().endsWith('.zip')) {
                 try {
                     const zip = await JSZip.loadAsync(file);
+                    // Varre todos os arquivos dentro do ZIP, independente de estarem em subpastas
                     for (let filename in zip.files) {
                         if (!zip.files[filename].dir && filename.toLowerCase().endsWith('.csv')) {
                             const text = await zip.files[filename].async("string");
-                            if(analisarDados(text, tipo)) { mudou = true; somarContador(tipo); }
+                            if(analisarDados(text, tipo)) { mudou = true; }
                         }
                     }
+                    somarContador(tipo);
                 } catch (err) { mostrarErro("Erro no ZIP: " + file.name, tipo); }
             } else if (file.name.toLowerCase().endsWith('.csv')) {
                 try {
@@ -516,12 +518,12 @@
         let separador = primeiraLinha.includes(';') ? ';' : ',';
         const headers = primeiraLinha.split(separador).map(h => h.trim().replace(/^["']|["']$/g, '').toLowerCase());
 
+        // Mapeia tanto a coluna 'operator' (para Bipes) quanto 'validation operator' (para ATs)
         let alvoColuna = (tipo === 'bipes') ? 'operator' : 'validation operator';
         const idxTarget = headers.findIndex(h => h === alvoColuna);
         const idxTime = headers.findIndex(h => h === 'validation end time');
 
         if (idxTarget === -1) {
-            mostrarErro(`Coluna de operador ("${alvoColuna}") não encontrada.`, tipo);
             return false;
         }
 
