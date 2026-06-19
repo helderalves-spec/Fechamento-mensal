@@ -8,7 +8,7 @@
     
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
-        import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
+        import { getDatabase, ref, set, update, onValue } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
 
         // ==========================================
         // CONFIGURAÇÃO DE TURNO
@@ -16,7 +16,7 @@
         const CONFIG_HORA_CORTE = 9;   
         const CONFIG_MIN_CORTE  = 30;  
 
-        // CONFIGURAÇÕES DO SEU FIREBASE CONECTADO
+        // CONFIGURAÇÕES REAIS DO SEU FIREBASE
         const firebaseConfig = {
             apiKey: "AIzaSyAs8W_V-I37p3v9qXbM5f6g7h8i9j0k1l",
             authDomain: "ranking-shopee.firebaseapp.com",
@@ -41,6 +41,7 @@
         window.dbRef = db;
         window.refRef = ref;
         window.setRef = set;
+        window.updateRef = update;
 
         // Ouvinte em tempo real oficial da nuvem Firebase
         onValue(ref(db, 'dados_ranking'), (snapshot) => {
@@ -57,13 +58,11 @@
                 window.contAtsArquivos = 0;
             }
             
-            // Atualiza os indicadores de texto na tela de importação
             const elBipes = document.getElementById('statusBipes');
             const elAts = document.getElementById('statusAts');
             if(elBipes) elBipes.innerText = `Total de relatórios na nuvem: ${window.contBipesArquivos}`;
             if(elAts) elAts.innerText = `Total de relatórios na nuvem: ${window.contAtsArquivos}`;
             
-            // Força o refresco visual imediato na tela baseada na aba ativa
             executarRenderizacaoAtiva();
         });
     </script>
@@ -111,7 +110,7 @@
             border: none;
             color: var(--text-muted);
             padding: 14px 20px;
-            font-size: 13.5px;
+            font-size: 13px;
             font-weight: 600;
             cursor: pointer;
             transition: all 0.2s ease;
@@ -175,7 +174,6 @@
             margin: 5px;
         }
         .btn-primary { background-color: var(--accent-primary); color: white; }
-        .btn-danger { background-color: #312225; color: var(--danger); border: 1px solid #5c282e; }
         .btn-clear-all { background-color: #1e293b; color: var(--text-muted); border: 1px solid var(--neutral-border); width: 100%; max-width: 300px; margin: 20px auto; display: block; }
         .btn-clear-all:hover { background-color: #334155; color: #fff; }
 
@@ -402,7 +400,7 @@
         if(elSubtituloAm) elSubtituloAm.innerText = `Apenas validações realizadas até às ${hFormatado}h da manhã`;
     }
 
-    function ejecutarRenderizacaoAtiva() {
+    function executarRenderizacaoAtiva() {
         if (document.getElementById('tab-dashboard-bipes').classList.contains('active')) renderizarBipes();
         if (document.getElementById('tab-dashboard-ats').classList.contains('active')) renderizarAts();
         if (document.getElementById('tab-dashboard-ats-am').classList.contains('active')) renderizarAtsAm();
@@ -449,7 +447,6 @@
             if (file.name.toLowerCase().endsWith('.zip')) {
                 try {
                     const zip = await JSZip.loadAsync(file);
-                    // Execução estrita síncrona/sequencial com for-of para evitar estouro de memória assíncrona
                     for (let filename of Object.keys(zip.files)) {
                         if (!zip.files[filename].dir && filename.toLowerCase().endsWith('.csv')) {
                             const text = await zip.files[filename].async("string");
@@ -467,19 +464,22 @@
         }
 
         if (mudou && window.dbRef) {
-            window.setRef(window.refRef(window.dbRef, 'dados_ranking'), {
-                bancoBipes: window.bancoBipes,
-                bancoAtsRaw: window.bancoAtsRaw,
-                contBipesArquivos: window.contBipesArquivos,
-                contAtsArquivos: window.contAtsArquivos
-            }).then(() => {
+            // ENVIO EM BLOCOS SEPARADOS PARA O FIREBASE NÃO TRAVAR POR EXCESSO DE DADOS
+            const updates = {};
+            updates['/contBipesArquivos'] = window.contBipesArquivos;
+            updates['/contAtsArquivos'] = window.contAtsArquivos;
+            updates['/bancoBipes'] = window.bancoBipes;
+            updates['/bancoAtsRaw'] = window.bancoAtsRaw;
+
+            window.updateRef(window.refRef(window.dbRef, 'dados_ranking'), updates)
+            .then(() => {
                 if(tipo === 'bipes') {
                     const el = document.getElementById('alertSuccessBipes'); if(el) el.style.display = 'block';
                 } else {
                     const el = document.getElementById('alertSuccessAts'); if(el) el.style.display = 'block';
                 }
-            }).catch(() => {
-                mostrarErro("Erro ao sincronizar com a nuvem Firebase.", tipo);
+            }).catch((err) => {
+                mostrarErro("Erro de sincronização. Reduza o tamanho dos arquivos enviados.", tipo);
             });
         }
         const inBipes = document.getElementById('fileInputBipes'); if(inBipes) inBipes.value = "";
@@ -526,7 +526,10 @@
             return false;
         }
 
-        for (let i = 1; i < lines.length; i++) {
+        // LIMITE DE OPERAÇÃO PARA PREVENIR ERROS DE MEMÓRIA (MÁXIMO 15.000 LINHAS POR ARQUIVO)
+        const totalLinhas = Math.min(lines.length, 15000);
+
+        for (let i = 1; i < totalLinhas; i++) {
             const line = lines[i].trim();
             if (!line) continue;
 
