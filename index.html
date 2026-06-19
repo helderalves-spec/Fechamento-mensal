@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema Operacional Unificado - Com Banco de Dados</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <style>
+        :root {
+            --bg-body: #0f172a;
+            --bg-card: #1e293b;
+            --accent-primary: #3b82f6;
+            --accent-hover: #2563eb;
+            --text-heading: #f8fafc;
+            --text-body: #cbd5e1;
+            --text-muted: #94a3b8;
+            --danger: #ef4444;
+            --success: #10b981;
+            --neutral-border: #334155;
+            --purple: #a855f7;
+            --orange: #f97316;
+        }
+
+        * { box-sizing: border-box; font-family: 'Segoe UI', system-ui, sans-serif; }
+
+        body {
+            background-color: var(--bg-body);
+            color: var(--text-body);
+            margin: 0;
+            padding: 0;
+            overflow-x: hidden;
+            width: 100vw;
+        }
+
+        /* Menu Superior de Abas */
+        .nav-tabs {
+            background-color: var(--bg-card);
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            border-bottom: 1px solid #334155;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .tab-button {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            padding: 14px 20px;
+            font-size: 13.5px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border-bottom: 3px solid transparent;
+        }
+
+        .tab-button:hover { color: var(--text-heading); }
+
+        .tab-button.active {
+            color: var(--accent-primary);
+            border-bottom-color: var(--accent-primary);
+            background-color: rgba(59, 130, 246, 0.05);
+        }
+
+        .container {
+            width: 100%;
+            padding: 15px 25px;
+        }
+
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+
+        /* --- ABA DE IMPORTAÇÃO --- */
+        .import-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
+            gap: 20px;
+            max-width: 1200px;
+            margin: 20px auto;
+        }
+
+        .import-box {
+            background: var(--bg-card);
+            padding: 25px;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            text-align: center;
+        }
+
+        .drop-zone {
+            border: 2px dashed #334155;
+            padding: 30px 15px;
+            border-radius: 6px;
+            background: #131d31;
+            cursor: pointer;
+            margin-bottom: 15px;
+            margin-top: 15px;
+        }
+
+        .drop-zone:hover, .drop-zone.dragover {
+            border-color: var(--accent-primary);
+            background: #1e2e4a;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            font-size: 13px;
+            border: none;
+            margin: 5px;
+        }
+        .btn-primary { background-color: var(--accent-primary); color: white; }
+        .btn-danger { background-color: #312225; color: var(--danger); border: 1px solid #5c282e; }
+        .btn-clear-all { background-color: #1e293b; color: var(--text-muted); border: 1px solid var(--neutral-border); width: 100%; max-width: 300px; margin: 20px auto; display: block; }
+        .btn-clear-all:hover { background-color: #334155; color: #fff; }
+
+        .file-input { display: none; }
+
+        .alert {
+            padding: 10px;
+            border-radius: 6px;
+            margin-top: 10px;
+            font-size: 13px;
+            display: none;
+        }
+        .alert-success { background-color: rgba(16, 185, 129, 0.15); color: #34d399; }
+        .alert-error { background-color: rgba(239, 68, 68, 0.15); color: #f87171; }
+
+        /* --- DASHBOARDS --- */
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #334155;
+        }
+
+        header h1 { margin: 0; color: var(--text-heading); font-size: 22px; }
+        header p { margin: 2px 0 0 0; color: var(--text-muted); font-size: 13px; }
+
+        .live-badge {
+            background-color: var(--success);
+            color: white;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 700;
+        }
+
+        .grid-columns {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px;
+            align-items: start;
+            width: 100%;
+        }
+
+        .ranking-list {
+            background-color: var(--bg-card);
+            border-radius: 6px;
+            overflow: hidden;
+            border: 1px solid #2d3748;
+            width: 100%;
+        }
+
+        .list-row {
+            display: flex;
+            align-items: center;
+            padding: 8px 14px;
+            border-bottom: 1px solid #2d3748;
+            font-size: 13.5px;
+        }
+
+        .list-row:last-child { border-bottom: none; }
+
+        /* Estilos Dinâmicos - Aba de Bipes (Colorida) */
+        #tab-dashboard-bipes .list-row.pos-1 { background-color: rgba(239, 68, 68, 0.12); color: #f87171; font-weight: bold;}
+        #tab-dashboard-bipes .list-row.pos-2 { background-color: rgba(245, 158, 11, 0.09); color: #fbbf24; }
+        #tab-dashboard-bipes .list-row.pos-3 { background-color: rgba(16, 185, 129, 0.09); color: #34d399; }
+        #tab-dashboard-bipes .pos-1 .cell-rank { color: var(--danger); }
+        #tab-dashboard-bipes .pos-2 .cell-rank { color: #f59e0b; }
+        #tab-dashboard-bipes .pos-3 .cell-rank { color: var(--success); }
+
+        /* Estilos de Linhas Neutras padrão */
+        .tab-content .list-row { background-color: var(--bg-card); color: var(--text-body); }
+        .tab-content .list-row:nth-child(even) { background-color: rgba(255, 255, 255, 0.02); }
+        .tab-content .cell-rank { color: var(--text-muted); font-weight: bold; }
+
+        .cell-rank { width: 50px; font-weight: 700; color: var(--text-muted); }
+        
+        .cell-name { 
+            flex-grow: 1; 
+            white-space: nowrap; 
+            overflow: hidden; 
+            text-overflow: ellipsis; 
+            padding-right: 15px; 
+            color: var(--text-heading); 
+        }
+        
+        .cell-count { font-weight: 800; font-size: 15px; text-align: right; min-width: 65px; }
+
+        .no-data { text-align: center; padding: 40px; color: var(--text-muted); font-size: 14px; grid-column: 1 / -1; }
+    </style>
+</head>
+<body>
+
+    <div class="nav-tabs">
+        <button class="tab-button active" onclick="switchTab('importacao')">📥 Importar Arquivos</button>
+        <button class="tab-button" onclick="switchTab('dashboard-bipes')">📊 Ranking Geral (Bipes)</button>
+        <button class="tab-button" onclick="switchTab('dashboard-ats')">📋 Ranking Geral (ATs)</button>
+        <button class="tab-button" onclick="switchTab('dashboard-ats-am')" style="color: var(--orange);">☀️ ATs - Turno AM</button>
+        <button class="tab-button" onclick="switchTab('dashboard-ats-pm')" style="color: var(--purple);">🌙 ATs - Turno PM</button>
+    </div>
+
+    <div class="container">
+        
+        <div id="tab-importacao" class="tab-content active">
+            <div class="import-grid">
+                
+                <div class="import-box">
+                    <h3 style="color: var(--text-heading); margin: 0;">1. Relatório de Bipes (Pacotes)</h3>
+                    <p style="color: var(--text-muted); font-size: 12px; margin: 4px 0 0 0;">Filtra pela coluna padrão "Operator"</p>
+
+                    <div class="drop-zone" id="dropZoneBipes" onclick="document.getElementById('fileInputBipes').click()">
+                        <p style="margin: 0; font-size: 13px; color: var(--text-body);">
+                            Arraste relatórios de <strong>Bipes</strong> ou clique
+                        </p>
+                        <input type="file" id="fileInputBipes" class="file-input" accept=".csv,.zip" multiple>
+                        <br>
+                        <button type="button" class="btn btn-primary" onclick="event.stopPropagation(); document.getElementById('fileInputBipes').click()">
+                            Buscar Arquivos
+                        </button>
+                    </div>
+                    <div id="alertSuccessBipes" class="alert alert-success">✓ Bipes somados com sucesso!</div>
+                    <div id="alertErrorBipes" class="alert alert-error"></div>
+                    <div style="font-size: 12px; color: var(--text-muted);" id="statusBipes">Nenhum arquivo de bipes processado.</div>
+                </div>
+
+                <div class="import-box">
+                    <h3 style="color: var(--text-heading); margin: 0;">2. Relatório de Auditoria (ATs)</h3>
+                    <p style="color: var(--text-muted); font-size: 12px; margin: 4px 0 0 0;">Separação Automática: AM (Até 09h) | PM (Após 09h)</p>
+
+                    <div class="drop-zone" id="dropZoneAts" onclick="document.getElementById('fileInputAts').click()">
+                        <p style="margin: 0; font-size: 13px; color: var(--text-body);">
+                            Arraste relatórios de <strong>ATs / Auditoria</strong> ou clique
+                        </p>
+                        <input type="file" id="fileInputAts" class="file-input" accept=".csv,.zip" multiple>
+                        <br>
+                        <button type="button" class="btn btn-primary" onclick="event.stopPropagation(); document.getElementById('fileInputAts').click()">
+                            Buscar Arquivos
+                        </button>
+                    </div>
+                    <div id="alertSuccessAts" class="alert alert-success">✓ Validações de AT separadas e somadas com sucesso!</div>
+                    <div id="alertErrorAts" class="alert alert-error"></div>
+                    <div style="font-size: 12px; color: var(--text-muted);" id="statusAts">Nenhum arquivo de auditoria processado.</div>
+                </div>
+
+            </div>
+            
+            <button class="btn btn-clear-all" onclick="resetarTudo()">⚠ Zerar Todo o Sistema (Limpar Banco de Dados)</button>
+        </div>
+
+        <div id="tab-dashboard-bipes" class="tab-content">
+            <header>
+                <div>
+                    <h1>Acompanhamento de Bipes Geral</h1>
+                    <p>Filtro por volume total de pacotes processados</p>
+                </div>
+                <div>
+                    <span class="live-badge">● BANCO ATIVO</span>
+                </div>
+            </header>
+            <div class="grid-columns" id="gridBipes">
+                <div class="no-data">Nenhum bibe registrado. Vá na aba de Importação.</div>
+            </div>
+        </div>
+
+        <div id="tab-dashboard-ats" class="tab-content">
+            <header>
+                <div>
+                    <h1>Ranking Geral de ATs (Acumulado)</h1>
+                    <p>Total Geral unificado (AM + PM)</p>
+                </div>
+                <div>
+                    <span class="live-badge" style="background-color: #64748b;">● BANCO ATIVO</span>
+                </div>
+            </header>
+            <div class="grid-columns" id="gridAts">
+                <div class="no-data">Nenhuma AT registrada até o momento.</div>
+            </div>
+        </div>
+
+        <div id="tab-dashboard-ats-am" class="tab-content">
+            <header>
+                <div>
+                    <h1>☀️ Ranking de ATs - Turno AM</h1>
+                    <p>Apenas validações realizadas <strong>até às 09:00h da manhã</strong></p>
+                </div>
+                <div>
+                    <span class="live-badge" style="background-color: var(--orange);">● TURNO AM</span>
+                </div>
+            </header>
+            <div class="grid-columns" id="gridAtsAm">
+                <div class="no-data">Nenhum registro no Turno AM.</div>
+            </div>
+        </div>
+
+        <div id="tab-dashboard-ats-pm" class="tab-content">
+            <header>
+                <div>
+                    <h1>🌙 Ranking de ATs - Turno PM</h1>
+                    <p>Apenas validações realizadas <strong>após às 09:00h da manhã</strong></p>
+                </div>
+                <div>
+                    <span class="live-badge" style="background-color: var(--purple);">● TURNO PM</span>
+                </div>
+            </header>
+            <div class="grid-columns" id="gridAtsPm">
+                <div class="no-data">Nenhum registro no Turno PM.</div>
+            </div>
+        </div>
+
+    </div>
+
+<script>
+    // CARREGAMENTO DOS BANCOS DE DADOS LOCAIS
+    let bancoBipes = JSON.parse(localStorage.getItem('bd_bipes_prod')) || {};
+    let bancoAts = JSON.parse(localStorage.getItem('bd_ats_prod')) || {};
+    let bancoAtsAm = JSON.parse(localStorage.getItem('bd_ats_am_prod')) || {};
+    let bancoAtsPm = JSON.parse(localStorage.getItem('bd_ats_pm_prod')) || {};
+    
+    let contBipesArquivos = parseInt(localStorage.getItem('cnt_bipes_arq')) || 0;
+    let contAtsArquivos = parseInt(localStorage.getItem('cnt_ats_arq')) || 0;
+
+    window.onload = function() {
+        if (contBipesArquivos > 0) document.getElementById('statusBipes').innerText = `Total de relatórios no banco: ${contBipesArquivos}`;
+        if (contAtsArquivos > 0) document.getElementById('statusAts').innerText = `Total de relatórios no banco: ${contAtsArquivos}`;
+    };
+
+    function switchTab(tabName) {
+        document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+
+        const botoes = document.querySelectorAll('.tab-button');
+        if(tabName === 'importacao') {
+            botoes[0].classList.add('active'); document.getElementById('tab-importacao').classList.add('active');
+        } else if(tabName === 'dashboard-bipes') {
+            botoes[1].classList.add('active'); document.getElementById('tab-dashboard-bipes').classList.add('active'); renderizarBipes();
+        } else if(tabName === 'dashboard-ats') {
+            botoes[2].classList.add('active'); document.getElementById('tab-dashboard-ats').classList.add('active'); renderizarAts();
+        } else if(tabName === 'dashboard-ats-am') {
+            botoes[3].classList.add('active'); document.getElementById('tab-dashboard-ats-am').classList.add('active'); renderizarAtsAm();
+        } else if(tabName === 'dashboard-ats-pm') {
+            botoes[4].classList.add('active'); document.getElementById('tab-dashboard-ats-pm').classList.add('active'); renderizarAtsPm();
+        }
+    }
+
+    // LISTENERS
+    document.getElementById('fileInputBipes').addEventListener('change', (e) => { if(e.target.files.length > 0) processarGenerico(e.target.files, 'bipes'); });
+    configurarDropZone(document.getElementById('dropZoneBipes'), 'bipes');
+
+    document.getElementById('fileInputAts').addEventListener('change', (e) => { if(e.target.files.length > 0) processarGenerico(e.target.files, 'ats'); });
+    configurarDropZone(document.getElementById('dropZoneAts'), 'ats');
+
+    function configurarDropZone(elemento, tipo) {
+        elemento.addEventListener('dragover', (e) => { e.preventDefault(); elemento.classList.add('dragover'); });
+        elemento.addEventListener('dragleave', () => { elemento.classList.remove('dragover'); });
+        elemento.addEventListener('drop', (e) => {
+            e.preventDefault(); elemento.classList.remove('dragover');
+            if(e.dataTransfer.files.length > 0) processarGenerico(e.dataTransfer.files, tipo);
+        });
+    }
+
+    async function processarGenerico(files, tipo) {
+        limparAlertas();
+        let mudou = false;
+
+        for (let file of files) {
+            if (file.name.toLowerCase().endsWith('.zip')) {
+                try {
+                    const zip = await JSZip.loadAsync(file);
+                    for (let filename in zip.files) {
+                        if (!zip.files[filename].dir && filename.toLowerCase().endsWith('.csv')) {
+                            const text = await zip.files[filename].async("string");
+                            if(analisarDados(text, tipo)) { mudou = true; somarContador(tipo); }
+                        }
+                    }
+                } catch (err) { mostrarErro("Erro no ZIP: " + file.name, tipo); }
+            } else if (file.name.toLowerCase().endsWith('.csv')) {
+                try {
+                    const text = await lerTexto(file);
+                    if(analisarDados(text, tipo)) { mudou = true; somarContador(tipo); }
+                } catch (err) { mostrarErro("Erro no CSV: " + file.name, tipo); }
+            }
+        }
+
+        if (mudou) {
+            if(tipo === 'bipes') {
+                localStorage.setItem('bd_bipes_prod', JSON.stringify(bancoBipes));
+                localStorage.setItem('cnt_bipes_arq', contBipesArquivos);
+                document.getElementById('alertSuccessBipes').style.display = 'block';
+                document.getElementById('statusBipes').innerText = `Total de relatórios no banco: ${contBipesArquivos}`;
+            } else {
+                localStorage.setItem('bd_ats_prod', JSON.stringify(bancoAts));
+                localStorage.setItem('bd_ats_am_prod', JSON.stringify(bancoAtsAm));
+                localStorage.setItem('bd_ats_pm_prod', JSON.stringify(bancoAtsPm));
+                localStorage.setItem('cnt_ats_arq', contAtsArquivos);
+                document.getElementById('alertSuccessAts').style.display = 'block';
+                document.getElementById('statusAts').innerText = `Total de relatórios no banco: ${contAtsArquivos}`;
+            }
+        }
+        document.getElementById('fileInputBipes').value = "";
+        document.getElementById('fileInputAts').value = "";
+    }
+
+    function somarContador(tipo) {
+        if (tipo === 'bipes') contBipesArquivos++;
+        else contAtsArquivos++;
+    }
+
+    function lerTexto(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = (e) => resolve(e.target.result);
+            reader.onerror = (err) => reject(err);
+            reader.readAsText(file, 'UTF-8');
+        });
+    }
+
+    function filtrarNomeLimpo(nomeOriginal) {
+        if (!nomeOriginal) return "";
+        let limpo = nomeOriginal;
+        limpo = limpo.replace(/\[.*?\]/gi, '');
+        limpo = limpo.replace(/ops\d+/gi, '');
+        limpo = limpo.replace(/\bops\b/gi, '');
+        limpo = limpo.replace(/-+/g, ' ');
+        return limpo.replace(/\s+/g, ' ').trim();
+    }
+
+    function analisarDados(text, tipo) {
+        const lines = text.split(/\r?\n/);
+        if (lines.length === 0) return false;
+
+        let primeiraLinha = lines[0];
+        let separador = primeiraLinha.includes(';') ? ';' : ',';
+        const headers = primeiraLinha.split(separador).map(h => h.trim().replace(/^["']|["']$/g, '').toLowerCase());
+
+        let alvoColuna = (tipo === 'bipes') ? 'operator' : 'validation operator';
+        const idxTarget = headers.findIndex(h => h === alvoColuna);
+        
+        const idxTime = headers.findIndex(h => h === 'validation end time');
+
+        if (idxTarget === -1) {
+            mostrarErro(`Coluna de operador ("${alvoColuna}") não encontrada.`, tipo);
+            return false;
+        }
+
+        for (let i = 1; i < lines.length; i++) {
+            const line = lines[i].trim();
+            if (!line) continue;
+
+            const colunas = quebrarColunasCSV(line, separador);
+            if (colunas.length > idxTarget) {
+                let operadorBruto = colunas[idxTarget].trim().replace(/^["']|["']$/g, '');
+                if (operadorBruto) {
+                    let operador = filtrarNomeLimpo(operadorBruto);
+                    if (operador) {
+                        if (tipo === 'bipes') {
+                            bancoBipes[operador] = (bancoBipes[operador] || 0) + 1;
+                        } else {
+                            // BANCO GERAL ACUMULADO
+                            bancoAts[operador] = (bancoAts[operador] || 0) + 1;
+
+                            // SEPARAÇÃO POR TURNO (AM / PM) baseada nas 09:00 da manhã
+                            let ePM = false; 
+                            if (idxTime !== -1 && colunas.length > idxTime) {
+                                let dataHoraBruta = colunas[idxTime].trim().replace(/^["']|["']$/g, ''); // Ex: "2026-06-18 13:53:11"
+                                if (dataHoraBruta.includes(' ')) {
+                                    let horaParte = dataHoraBruta.split(' ')[1]; // Pega "13:53:11"
+                                    if (horaParte) {
+                                        let apenasHora = parseInt(horaParte.split(':')[0]); // Pega a hora
+                                        if (apenasHora >= 9) {
+                                            ePM = true; // Se for 09:00 ou posterior, vai para o PM
+                                        }
+                                    }
+                                }
+                            }
+
+                            if (ePM) {
+                                bancoAtsPm[operador] = (bancoAtsPm[operador] || 0) + 1;
+                            } else {
+                                bancoAtsAm[operador] = (bancoAtsAm[operador] || 0) + 1;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        return true;
+    }
+
+    function quebrarColunasCSV(text, sep) {
+        let p = '', c = []; let inQuotes = false;
+        for (let i=0; i<text.length; i++) {
+            let ch = text[i];
+            if (ch === '"') inQuotes = !inQuotes;
+            else if (ch === sep && !inQuotes) { c.push(p); p = ''; }
+            else p += ch;
+        }
+        c.push(p); return c;
+    }
+
+    function renderizarBipes() {
+        const grid = document.getElementById('gridBipes');
+        const lista = Object.entries(bancoBipes).sort((a, b) => b[1] - a[1]);
+        grid.innerHTML = lista.length === 0 ? '<div class="no-data">Nenhum registro encontrado.</div>' : '';
+        distribuirEmColunasEquilibradas(grid, lista, 'bipes');
+    }
+
+    function renderizarAts() {
+        const grid = document.getElementById('gridAts');
+        const lista = Object.entries(bancoAts).sort((a, b) => b[1] - a[1]);
+        grid.innerHTML = lista.length === 0 ? '<div class="no-data">Nenhum registro encontrado.</div>' : '';
+        distribuirEmColunasEquilibradas(grid, lista, 'ats');
+    }
+
+    function renderizarAtsAm() {
+        const grid = document.getElementById('gridAtsAm');
+        const lista = Object.entries(bancoAtsAm).sort((a, b) => b[1] - a[1]);
+        grid.innerHTML = lista.length === 0 ? '<div class="no-data">Nenhum registro no turno AM até às 09h.</div>' : '';
+        distribuirEmColunasEquilibradas(grid, lista, 'ats-am');
+    }
+
+    function renderizarAtsPm() {
+        const grid = document.getElementById('gridAtsPm');
+        const lista = Object.entries(bancoAtsPm).sort((a, b) => b[1] - a[1]);
+        grid.innerHTML = lista.length === 0 ? '<div class="no-data">Nenhum registro no turno PM após às 09h.</div>' : '';
+        distribuirEmColunasEquilibradas(grid, lista, 'ats-pm');
+    }
+
+    function distribuirEmColunasEquilibradas(elementoGrid, dados, tipo) {
+        const totalItens = dados.length;
+        const itensPorColuna = Math.ceil(totalItens / 4);
+
+        for (let col = 0; col < 4; col++) {
+            const inicio = col * itensPorColuna;
+            const fim = inicio + itensPorColuna;
+            const subLista = dados.slice(inicio, fim);
+
+            if (subLista.length === 0) continue;
+
+            let htmlBloco = `<div class="ranking-list">`;
+
+            subLista.forEach(([nomeCompleto, quantidade], indexNoBloco) => {
+                let pos = inicio + indexNoBloco + 1;
+                let classeEstilo = '';
+                if (pos === 1 && tipo === 'bipes') classeEstilo = 'pos-1';
+                else if (pos === 2 && tipo === 'bipes') classeEstilo = 'pos-2';
+                else if (pos === 3 && tipo === 'bipes') classeEstilo = 'pos-3';
+
+                let nomeLimpo = filtrarNomeLimpo(nomeCompleto);
+
+                htmlBloco += `
+                    <div class="list-row ${classeEstilo}">
+                        <div class="cell-rank">#${pos}</div>
+                        <div class="cell-name" title="${nomeCompleto}">${nomeLimpo}</div>
+                        <div class="cell-count">${quantidade} <span style="font-size:10px; color:var(--text-muted); font-weight:normal;">un</span></div>
+                    </div>
+                `;
+            });
+
+            htmlBloco += `</div>`;
+            elementoGrid.insertAdjacentHTML('beforeend', htmlBloco);
+        }
+    }
+
+    function resetarTudo() {
+        if (confirm("Quer realmente apagar DEFINITIVAMENTE o banco de dados do sistema? Todos os históricos acumulados (Bipes, Geral, AM e PM) serão limpos.")) {
+            localStorage.clear();
+            bancoBipes = {}; bancoAts = {}; bancoAtsAm = {}; bancoAtsPm = {};
+            contBipesArquivos = 0; contAtsArquivos = 0;
+            document.getElementById('statusBipes').innerText = "Nenhum arquivo de bipes processado.";
+            document.getElementById('statusAts').innerText = "Nenhum arquivo de auditoria processado.";
+            limparAlertas();
+            renderizarBipes(); renderizarAts(); renderizarAtsAm(); renderizarAtsPm();
+        }
+    }
+
+    function mostrarErro(msg, tipo) {
+        const idAlvo = (tipo === 'bipes') ? 'alertErrorBipes' : 'alertErrorAts';
+        const err = document.getElementById(idAlvo);
+        err.innerText = msg; err.style.display = 'block';
+    }
+
+    function limparAlertas() {
+        document.getElementById('alertSuccessBipes').style.display = 'none';
+        document.getElementById('alertErrorBipes').style.display = 'none';
+        document.getElementById('alertSuccessAts').style.display = 'none';
+        document.getElementById('alertErrorAts').style.display = 'none';
+    }
+
+    setInterval(() => {
+        if (document.getElementById('tab-dashboard-bipes').classList.contains('active')) renderizarBipes();
+        if (document.getElementById('tab-dashboard-ats').classList.contains('active')) renderizarAts();
+        if (document.getElementById('tab-dashboard-ats-am').classList.contains('active')) renderizarAtsAm();
+        if (document.getElementById('tab-dashboard-ats-pm').classList.contains('active')) renderizarAtsPm();
+    }, 4000);
+</script>
+</body>
+</html>
