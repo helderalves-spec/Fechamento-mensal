@@ -11,12 +11,12 @@
         import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
 
         // ==========================================
-        // CONFIGURAÇÃO DE TURNO (AJUSTE SE PRECISAR)
+        // CONFIGURAÇÃO DE TURNO
         // ==========================================
         const CONFIG_HORA_CORTE = 9;   
         const CONFIG_MIN_CORTE  = 30;  
 
-        // INSIRA SUAS CREDENCIAIS DO FIREBASE LOGO ABAIXO:
+        // CONFIGURAÇÕES DO SEU FIREBASE (COLE AS SUAS AQUI)
         const firebaseConfig = {
             apiKey: "SEU_API_KEY",
             authDomain: "SEU_AUTH_DOMAIN",
@@ -27,11 +27,11 @@
             appId: "SEU_APP_ID"
         };
 
-        // Inicialização do ecossistema
+        // Inicialização global do Firebase
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
 
-        // Globais compartilhadas com as funções legadas da página
+        // Exportação segura para funções tradicionais do script
         window.bancoBipes = {};
         window.bancoAtsRaw = [];
         window.contBipesArquivos = 0;
@@ -57,21 +57,17 @@
                 window.contAtsArquivos = 0;
             }
             
-            // Atualiza indicadores do painel de importação
+            // Atualiza os contadores na tela principal
             const elBipes = document.getElementById('statusBipes');
             const elAts = document.getElementById('statusAts');
             if(elBipes) elBipes.innerText = `Total de relatórios na nuvem: ${window.contBipesArquivos}`;
             if(elAts) elAts.innerText = `Total de relatórios na nuvem: ${window.contAtsArquivos}`;
             
-            // Recarrega dinamicamente os rankings visuais ativos
-            const containerAtivo = document.querySelector('.tab-content.active');
-            if (containerAtivo) {
-                const idAba = containerAtivo.id;
-                if (idAba === 'tab-dashboard-bipes') renderizarBipes();
-                if (idAba === 'tab-dashboard-ats') renderizarAtsGeral();
-                if (idAba === 'tab-dashboard-ats-am') renderizarAtsTurnos('AM');
-                if (idAba === 'tab-dashboard-ats-pm') renderizarAtsTurnos('PM');
-            }
+            // Força a renderização automática conforme a aba que está aberta
+            if (document.getElementById('tab-dashboard-bipes').classList.contains('active')) renderizarBipes();
+            if (document.getElementById('tab-dashboard-ats').classList.contains('active')) renderizarAts();
+            if (document.getElementById('tab-dashboard-ats-am').classList.contains('active')) renderizarAtsAm();
+            if (document.getElementById('tab-dashboard-ats-pm').classList.contains('active')) renderizarAtsPm();
         });
     </script>
 
@@ -422,13 +418,13 @@
             const tab = document.getElementById('tab-dashboard-bipes'); if(tab) tab.classList.add('active'); renderizarBipes();
         } else if(tabName === 'dashboard-ats') {
             if(botoes[2]) botoes[2].classList.add('active'); 
-            const tab = document.getElementById('tab-dashboard-ats'); if(tab) tab.classList.add('active'); renderizarAtsGeral();
+            const tab = document.getElementById('tab-dashboard-ats'); if(tab) tab.classList.add('active'); renderizarAts();
         } else if(tabName === 'dashboard-ats-am') {
             if(botoes[3]) botoes[3].classList.add('active'); 
-            const tab = document.getElementById('tab-dashboard-ats-am'); if(tab) tab.classList.add('active'); renderizarAtsTurnos('AM');
+            const tab = document.getElementById('tab-dashboard-ats-am'); if(tab) tab.classList.add('active'); renderizarAtsAm();
         } else if(tabName === 'dashboard-ats-pm') {
             if(botoes[4]) botoes[4].classList.add('active'); 
-            const tab = document.getElementById('tab-dashboard-ats-pm'); if(tab) tab.classList.add('active'); renderizarAtsTurnos('PM');
+            const tab = document.getElementById('tab-dashboard-ats-pm'); if(tab) tab.classList.add('active'); renderizarAtsPm();
         }
     }
 
@@ -579,7 +575,7 @@
         distribuirEmColunasEquilibradas(grid, lista, 'bipes');
     }
 
-    function renderizarAtsGeral() {
+    function renderizarAts() {
         const grid = document.getElementById('gridAts');
         if(!grid) return;
         let unificado = {};
@@ -591,8 +587,8 @@
         distribuirEmColunasEquilibradas(grid, lista, 'ats');
     }
 
-    function renderizarAtsTurnos(turnoAlvo) {
-        const grid = (turnoAlvo === 'AM') ? document.getElementById('gridAtsAm') : document.getElementById('gridAtsPm');
+    function renderizarAtsAm() {
+        const grid = document.getElementById('gridAtsAm');
         if(!grid) return;
         
         const corteMinutos = ((window.CONFIG_HORA_CORTE || 9) * 60) + (window.CONFIG_MIN_CORTE || 30);
@@ -600,11 +596,7 @@
         
         (window.bancoAtsRaw || []).forEach((item) => {
             if (!item || !item.operador || item.minutosDoDia === -1) return; 
-            let ePM = item.minutosDoDia >= corteMinutos;
-            
-            if (turnoAlvo === 'PM' && ePM) {
-                processado[item.operador] = (processado[item.operador] || 0) + 1;
-            } else if (turnoAlvo === 'AM' && !ePM) {
+            if (item.minutosDoDia < corteMinutos) {
                 processado[item.operador] = (processado[item.operador] || 0) + 1;
             }
         });
@@ -612,13 +604,35 @@
         const lista = Object.entries(processado).sort((a, b) => b[1] - a[1]);
         const hFmt = String(window.CONFIG_HORA_CORTE || 9).padStart(2, '0') + ":" + String(window.CONFIG_MIN_CORTE || 30).padStart(2, '0');
         
-        grid.innerHTML = lista.length === 0 ? `<div class="no-data">Nenhum registro no turno ${turnoAlvo} na nuvem (Corte: ${hFmt}).</div>` : '';
-        distribuirEmColunasEquilibradas(grid, lista, `ats-${turnoAlvo.toLowerCase()}`);
+        grid.innerHTML = lista.length === 0 ? `<div class="no-data">Nenhum registro no turno AM na nuvem (Corte: ${hFmt}).</div>` : '';
+        distribuirEmColunasEquilibradas(grid, lista, 'ats-am');
+    }
+
+    function renderizarAtsPm() {
+        const grid = document.getElementById('gridAtsPm');
+        if(!grid) return;
+        
+        const corteMinutos = ((window.CONFIG_HORA_CORTE || 9) * 60) + (window.CONFIG_MIN_CORTE || 30);
+        let processado = {};
+        
+        (window.bancoAtsRaw || []).forEach((item) => {
+            if (!item || !item.operador || item.minutosDoDia === -1) return; 
+            if (item.minutosDoDia >= corteMinutos) {
+                processado[item.operador] = (processado[item.operador] || 0) + 1;
+            }
+        });
+
+        const lista = Object.entries(processado).sort((a, b) => b[1] - a[1]);
+        const hFmt = String(window.CONFIG_HORA_CORTE || 9).padStart(2, '0') + ":" + String(window.CONFIG_MIN_CORTE || 30).padStart(2, '0');
+        
+        grid.innerHTML = lista.length === 0 ? `<div class="no-data">Nenhum registro no turno PM na nuvem (Corte: ${hFmt}).</div>` : '';
+        distribuirEmColunasEquilibradas(grid, lista, 'ats-pm');
     }
 
     function distribuirEmColunasEquilibradas(elementoGrid, dados, tipo) {
         const totalItens = dados.length;
         const itensPorColuna = Math.ceil(totalItens / 4);
+        elementoGrid.innerHTML = '';
 
         for (let col = 0; col < 4; col++) {
             const inicio = col * itensPorColuna;
