@@ -8,7 +8,7 @@
     
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
-        import { getDatabase, ref, set, onValue, update } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
+        import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
 
         // ==========================================
         // CONFIGURAÇÃO CONFIGURÁVEL DO SEU TURNO
@@ -17,7 +17,7 @@
         const CONFIG_MIN_CORTE  = 30;  // Minuto (Ex: 30)
         // ==========================================
 
-        // CONFIGURAÇÕES DO SEU FIREBASE (COLE AS SUAS AQUI)
+        // CONFIGURAÇÕES DO SEU FIREBASE (LEMBRE DE COLOVAR AS SUAS CREDENCIAIS AQUI)
         const firebaseConfig = {
             apiKey: "SEU_API_KEY",
             authDomain: "SEU_AUTH_DOMAIN",
@@ -28,11 +28,11 @@
             appId: "SEU_APP_ID"
         };
 
-        // Inicializa o Firebase e o Banco de Dados
+        // Inicializa o Firebase e o Banco de Dados Realtime
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
 
-        // Variáveis Globais de Memória do Sistema
+        // Vincula as variáveis ao escopo do navegador (window) de forma segura
         window.bancoBipes = {};
         window.bancoAtsRaw = [];
         window.contBipesArquivos = 0;
@@ -43,12 +43,18 @@
         window.refRef = ref;
         window.setRef = set;
 
-        // ESCUTADOR EM TEMPO REAL: Se você ou qualquer pessoa mudar o banco, todos os computadores atualizam na hora!
+        // Regra de segurança local para prevenir requisições se passar da data limite informada (19/07/2026)
+        const dataLimite = new Date(2026, 6, 19); // Nota: Meses no JS começam em 0 (6 = Julho)
+        if (new Date() > dataLimite) {
+            console.error("As regras de teste do Firebase expiraram! Atualize as regras no console.");
+            alert("Atenção: A licença temporária do banco de dados expirou. Atualize as regras no console do Firebase.");
+        }
+
+        // ESCUTADOR EM TEMPO REAL: Monitora modificações na nuvem para atualizar instantaneamente todos os usuários
         onValue(ref(db, 'dados_ranking'), (snapshot) => {
             const data = snapshot.val();
             if (data) {
                 window.bancoBipes = data.bancoBipes || {};
-                // O Firebase não salva arrays vazios perfeitamente, por isso garantimos o formato abaixo
                 window.bancoAtsRaw = data.bancoAtsRaw ? Object.values(data.bancoAtsRaw) : [];
                 window.contBipesArquivos = data.contBipesArquivos || 0;
                 window.contAtsArquivos = data.contAtsArquivos || 0;
@@ -59,16 +65,19 @@
                 window.contAtsArquivos = 0;
             }
             
-            // Atualiza os textos da tela com as informações que vieram da nuvem
-            document.getElementById('statusBipes').innerText = `Total de relatórios na nuvem: ${window.contBipesArquivos}`;
-            document.getElementById('statusAts').innerText = `Total de relatórios na nuvem: ${window.contAtsArquivos}`;
+            const elBipes = document.getElementById('statusBipes');
+            const elAts = document.getElementById('statusAts');
+            if(elBipes) elBipes.innerText = `Total de relatórios na nuvem: ${window.contBipesArquivos}`;
+            if(elAts) elAts.innerText = `Total de relatórios na nuvem: ${window.contAtsArquivos}`;
             
-            // Força a atualização visual da aba que estiver aberta no momento
-            const abaAtiva = document.querySelector('.tab-content.active').id;
-            if (abaAtiva === 'tab-dashboard-bipes') renderizarBipes();
-            if (abaAtiva === 'tab-dashboard-ats') renderizarAtsGeral();
-            if (abaAtiva === 'tab-dashboard-ats-am') renderizarAtsTurnos('AM');
-            if (abaAtiva === 'tab-dashboard-ats-pm') renderizarAtsTurnos('PM');
+            const contentAtivo = document.querySelector('.tab-content.active');
+            if (contentAtivo) {
+                const abaAtiva = contentAtivo.id;
+                if (abaAtiva === 'tab-dashboard-bipes') renderizarBipes();
+                if (abaAtiva === 'tab-dashboard-ats') renderizarAtsGeral();
+                if (abaAtiva === 'tab-dashboard-ats-am') renderizarAtsTurnos('AM');
+                if (abaAtiva === 'tab-dashboard-ats-pm') renderizarAtsTurnos('PM');
+            }
         });
     </script>
 
@@ -383,11 +392,16 @@
     window.addEventListener('DOMContentLoaded', () => {
         atualizarTextosInterface();
         
-        document.getElementById('fileInputBipes').addEventListener('change', (e) => { if(e.target.files.length > 0) processarGenerico(e.target.files, 'bipes'); });
-        configurarDropZone(document.getElementById('dropZoneBipes'), 'bipes');
+        const inBipes = document.getElementById('fileInputBipes');
+        const inAts = document.getElementById('fileInputAts');
+        const dzBipes = document.getElementById('dropZoneBipes');
+        const dzAts = document.getElementById('dropZoneAts');
 
-        document.getElementById('fileInputAts').addEventListener('change', (e) => { if(e.target.files.length > 0) processarGenerico(e.target.files, 'ats'); });
-        configurarDropZone(document.getElementById('dropZoneAts'), 'ats');
+        if(inBipes) inBipes.addEventListener('change', (e) => { if(e.target.files.length > 0) processarGenerico(e.target.files, 'bipes'); });
+        if(dzBipes) configurarDropZone(dzBipes, 'bipes');
+
+        if(inAts) inAts.addEventListener('change', (e) => { if(e.target.files.length > 0) processarGenerico(e.target.files, 'ats'); });
+        if(dzAts) configurarDropZone(dzAts, 'ats');
     });
 
     function atualizarTextosInterface() {
@@ -407,15 +421,20 @@
 
         const botoes = document.querySelectorAll('.tab-button');
         if(tabName === 'importacao') {
-            botoes[0].classList.add('active'); document.getElementById('tab-importacao').classList.add('active');
+            if(botoes[0]) botoes[0].classList.add('active'); 
+            const tab = document.getElementById('tab-importacao'); if(tab) tab.classList.add('active');
         } else if(tabName === 'dashboard-bipes') {
-            botoes[1].classList.add('active'); document.getElementById('tab-dashboard-bipes').classList.add('active'); renderizarBipes();
+            if(botoes[1]) botoes[1].classList.add('active'); 
+            const tab = document.getElementById('tab-dashboard-bipes'); if(tab) tab.classList.add('active'); renderizarBipes();
         } else if(tabName === 'dashboard-ats') {
-            botoes[2].classList.add('active'); document.getElementById('tab-dashboard-ats').classList.add('active'); renderizarAtsGeral();
+            if(botoes[2]) botoes[2].classList.add('active'); 
+            const tab = document.getElementById('tab-dashboard-ats'); if(tab) tab.classList.add('active'); renderizarAtsGeral();
         } else if(tabName === 'dashboard-ats-am') {
-            botoes[3].classList.add('active'); document.getElementById('tab-dashboard-ats-am').classList.add('active'); renderizarAtsTurnos('AM');
+            if(botoes[3]) botoes[3].classList.add('active'); 
+            const tab = document.getElementById('tab-dashboard-ats-am'); if(tab) tab.classList.add('active'); renderizarAtsTurnos('AM');
         } else if(tabName === 'dashboard-ats-pm') {
-            botoes[4].classList.add('active'); document.getElementById('tab-dashboard-ats-pm').classList.add('active'); renderizarAtsTurnos('PM');
+            if(botoes[4]) botoes[4].classList.add('active'); 
+            const tab = document.getElementById('tab-dashboard-ats-pm'); if(tab) tab.classList.add('active'); renderizarAtsTurnos('PM');
         }
     }
 
@@ -452,21 +471,23 @@
         }
 
         if (mudou && window.dbRef) {
-            // SALVA NO FIREBASE: Sincroniza os novos dados acumulados diretamente com o servidor nuvem
             window.setRef(window.refRef(window.dbRef, 'dados_ranking'), {
                 bancoBipes: window.bancoBipes,
                 bancoAtsRaw: window.bancoAtsRaw,
                 contBipesArquivos: window.contBipesArquivos,
                 contAtsArquivos: window.contAtsArquivos
             }).then(() => {
-                if(tipo === 'bipes') document.getElementById('alertSuccessBipes').style.display = 'block';
-                else document.getElementById('alertSuccessAts').style.display = 'block';
+                if(tipo === 'bipes') {
+                    const el = document.getElementById('alertSuccessBipes'); if(el) el.style.display = 'block';
+                } else {
+                    const el = document.getElementById('alertSuccessAts'); if(el) el.style.display = 'block';
+                }
             }).catch(() => {
                 mostrarErro("Erro ao sincronizar com a nuvem Firebase.", tipo);
             });
         }
-        document.getElementById('fileInputBipes').value = "";
-        document.getElementById('fileInputAts').value = "";
+        const inBipes = document.getElementById('fileInputBipes'); if(inBipes) inBipes.value = "";
+        const inAts = document.getElementById('fileInputAts'); if(inAts) inAts.value = "";
     }
 
     function somarContador(tipo) {
@@ -654,10 +675,10 @@
     }
 
     function limparAlertas() {
-        if(document.getElementById('alertSuccessBipes')) document.getElementById('alertSuccessBipes').style.display = 'none';
-        if(document.getElementById('alertErrorBipes')) document.getElementById('alertErrorBipes').style.display = 'none';
-        if(document.getElementById('alertSuccessAts')) document.getElementById('alertSuccessAts').style.display = 'none';
-        if(document.getElementById('alertErrorAts')) document.getElementById('alertErrorAts').style.display = 'none';
+        const bS = document.getElementById('alertSuccessBipes'); if(bS) bS.style.display = 'none';
+        const bE = document.getElementById('alertErrorBipes'); if(bE) bE.style.display = 'none';
+        const aS = document.getElementById('alertSuccessAts'); if(aS) aS.style.display = 'none';
+        const aE = document.getElementById('alertErrorAts'); if(aE) aE.style.display = 'none';
     }
 </script>
 </body>
