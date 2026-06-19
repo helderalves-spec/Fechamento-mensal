@@ -3,69 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistema Operacional Unificado - Firebase Cloud</title>
+    <title>Sistema Operacional Unificado - Nuvem Conectada</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
-        import { getDatabase, ref, set, update, onValue } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
-
-        // ==========================================
-        // CONFIGURAÇÃO DE TURNO
-        // ==========================================
-        const CONFIG_HORA_CORTE = 9;   
-        const CONFIG_MIN_CORTE  = 30;  
-
-        // CONFIGURAÇÕES REAIS DO SEU FIREBASE
-        const firebaseConfig = {
-            apiKey: "AIzaSyAs8W_V-I37p3v9qXbM5f6g7h8i9j0k1l",
-            authDomain: "ranking-shopee.firebaseapp.com",
-            databaseURL: "https://ranking-shopee-default-rtdb.firebaseio.com",
-            projectId: "ranking-shopee",
-            storageBucket: "ranking-shopee.appspot.com",
-            messagingSenderId: "384729481023",
-            appId: "1:384729481023:web:a1b2c3d4e5f6g7h8i9j0k1"
-        };
-
-        // Inicialização global imediata
-        const app = initializeApp(firebaseConfig);
-        const db = getDatabase(app);
-
-        // Exportação segura e imediata para o escopo global (window)
-        window.bancoBipes = {};
-        window.bancoAtsRaw = [];
-        window.contBipesArquivos = 0;
-        window.contAtsArquivos = 0;
-        window.CONFIG_HORA_CORTE = CONFIG_HORA_CORTE;
-        window.CONFIG_MIN_CORTE = CONFIG_MIN_CORTE;
-        window.dbRef = db;
-        window.refRef = ref;
-        window.setRef = set;
-        window.updateRef = update;
-
-        // Ouvinte em tempo real oficial da nuvem Firebase
-        onValue(ref(db, 'dados_ranking'), (snapshot) => {
-            const data = snapshot.val();
-            if (data) {
-                window.bancoBipes = data.bancoBipes || {};
-                window.bancoAtsRaw = data.bancoAtsRaw ? Object.values(data.bancoAtsRaw) : [];
-                window.contBipesArquivos = data.contBipesArquivos || 0;
-                window.contAtsArquivos = data.contAtsArquivos || 0;
-            } else {
-                window.bancoBipes = {};
-                window.bancoAtsRaw = [];
-                window.contBipesArquivos = 0;
-                window.contAtsArquivos = 0;
-            }
-            
-            const elBipes = document.getElementById('statusBipes');
-            const elAts = document.getElementById('statusAts');
-            if(elBipes) elBipes.innerText = `Total de relatórios na nuvem: ${window.contBipesArquivos}`;
-            if(elAts) elAts.innerText = `Total de relatórios na nuvem: ${window.contAtsArquivos}`;
-            
-            executarRenderizacaoAtiva();
-        });
-    </script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
 
     <style>
         :root {
@@ -110,7 +52,7 @@
             border: none;
             color: var(--text-muted);
             padding: 14px 20px;
-            font-size: 13px;
+            font-size: 13.5px;
             font-weight: 600;
             cursor: pointer;
             transition: all 0.2s ease;
@@ -174,6 +116,7 @@
             margin: 5px;
         }
         .btn-primary { background-color: var(--accent-primary); color: white; }
+        .btn-danger { background-color: #312225; color: var(--danger); border: 1px solid #5c282e; }
         .btn-clear-all { background-color: #1e293b; color: var(--text-muted); border: 1px solid var(--neutral-border); width: 100%; max-width: 300px; margin: 20px auto; display: block; }
         .btn-clear-all:hover { background-color: #334155; color: #fff; }
 
@@ -248,8 +191,18 @@
         .tab-content .cell-rank { color: var(--text-muted); font-weight: bold; }
 
         .cell-rank { width: 50px; font-weight: 700; color: var(--text-muted); }
-        .cell-name { flex-grow: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-right: 15px; color: var(--text-heading); }
+        
+        .cell-name { 
+            flex-grow: 1; 
+            white-space: nowrap; 
+            overflow: hidden; 
+            text-overflow: ellipsis; 
+            padding-right: 15px; 
+            color: var(--text-heading); 
+        }
+        
         .cell-count { font-weight: 800; font-size: 15px; text-align: right; min-width: 65px; }
+
         .no-data { text-align: center; padding: 40px; color: var(--text-muted); font-size: 14px; grid-column: 1 / -1; }
     </style>
 </head>
@@ -282,14 +235,14 @@
                             Buscar Arquivos
                         </button>
                     </div>
-                    <div id="alertSuccessBipes" class="alert alert-success">✓ Bipes salvos na Nuvem Firebase!</div>
+                    <div id="alertSuccessBipes" class="alert alert-success">✓ Bipes somados com sucesso na Nuvem!</div>
                     <div id="alertErrorBipes" class="alert alert-error"></div>
-                    <div style="font-size: 12px; color: var(--text-muted);" id="statusBipes">Sincronizando com a nuvem...</div>
+                    <div style="font-size: 12px; color: var(--text-muted);" id="statusBipes">Sincronizando arquivos...</div>
                 </div>
 
                 <div class="import-box">
                     <h3 style="color: var(--text-heading); margin: 0;">2. Relatório de Auditoria (ATs)</h3>
-                    <p id="legendaHorario" style="color: var(--text-muted); font-size: 12px; margin: 4px 0 0 0;">Separação Automática Inteligente</p>
+                    <p style="color: var(--text-muted); font-size: 12px; margin: 4px 0 0 0;">Separação Automática: AM (Até 09:30h) | PM (Após 09:30h)</p>
 
                     <div class="drop-zone" id="dropZoneAts" onclick="document.getElementById('fileInputAts').click()">
                         <p style="margin: 0; font-size: 13px; color: var(--text-body);">
@@ -301,14 +254,14 @@
                             Buscar Arquivos
                         </button>
                     </div>
-                    <div id="alertSuccessAts" class="alert alert-success">✓ ATs salvas na Nuvem Firebase!</div>
+                    <div id="alertSuccessAts" class="alert alert-success">✓ Validações de AT separadas e somadas na Nuvem!</div>
                     <div id="alertErrorAts" class="alert alert-error"></div>
-                    <div style="font-size: 12px; color: var(--text-muted);" id="statusAts">Sincronizando com a nuvem...</div>
+                    <div style="font-size: 12px; color: var(--text-muted);" id="statusAts">Sincronizando arquivos...</div>
                 </div>
 
             </div>
             
-            <button class="btn btn-clear-all" onclick="resetarTudo()">⚠ Zerar Todo o Sistema (Limpar Nuvem Firebase)</button>
+            <button class="btn btn-clear-all" onclick="resetarTudo()">⚠ Zerar Todo o Sistema (Limpar Banco de Dados na Nuvem)</button>
         </div>
 
         <div id="tab-dashboard-bipes" class="tab-content">
@@ -318,7 +271,7 @@
                     <p>Filtro por volume total de pacotes processados</p>
                 </div>
                 <div>
-                    <span class="live-badge">● FIREBASE LIVE</span>
+                    <span class="live-badge" style="background-color: #0284c7;">● NUVEM ATIVA</span>
                 </div>
             </header>
             <div class="grid-columns" id="gridBipes">
@@ -333,7 +286,7 @@
                     <p>Total Geral unificado (AM + PM)</p>
                 </div>
                 <div>
-                    <span class="live-badge" style="background-color: #64748b;">● FIREBASE LIVE</span>
+                    <span class="live-badge" style="background-color: #64748b;">● NUVEM ATIVA</span>
                 </div>
             </header>
             <div class="grid-columns" id="gridAts">
@@ -344,8 +297,8 @@
         <div id="tab-dashboard-ats-am" class="tab-content">
             <header>
                 <div>
-                    <h1 id="tituloAm">☀️ Ranking de ATs - Turno AM</h1>
-                    <p id="subtituloAm">Apenas validações realizadas antes do horário de corte</p>
+                    <h1>☀️ Ranking de ATs - Turno AM</h1>
+                    <p>Apenas validações realizadas <strong>até às 09:30h da manhã</strong></p>
                 </div>
                 <div>
                     <span class="live-badge" style="background-color: var(--orange);">● TURNO AM</span>
@@ -360,7 +313,7 @@
             <header>
                 <div>
                     <h1>🌙 Ranking de ATs - Turno PM</h1>
-                    <p>Apenas validações realizadas após o horário de corte</p>
+                    <p>Apenas validações realizadas <strong>após às 09:30h da manhã</strong></p>
                 </div>
                 <div>
                     <span class="live-badge" style="background-color: var(--purple);">● TURNO PM</span>
@@ -374,38 +327,46 @@
     </div>
 
 <script>
-    window.addEventListener('DOMContentLoaded', () => {
-        atualizarTextosInterface();
+    // Configurações do seu Firebase vinculadas com sucesso
+    const firebaseConfig = {
+        apiKey: "AIzaSyA1sBmUelGCBamCDc3g76MHFzgSpbAw5zk",
+        authDomain: "ranking-mensal.firebaseapp.com",
+        databaseURL: "https://ranking-mensal-default-rtdb.firebaseio.com",
+        projectId: "ranking-mensal",
+        storageBucket: "ranking-mensal.firebasestorage.app",
+        messagingSenderId: "55698327880",
+        appId: "1:55698327880:web:d4d001007d34c8bfcd4b7d",
+        measurementId: "G-B2K1CPPSEC"
+    };
+    
+    // Inicializar o Firebase no modelo Compatível
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    // Objetos locais que escutam a nuvem
+    let bancoBipes = {};
+    let bancoAts = {};
+    let bancoAtsAm = {};
+    let bancoAtsPm = {};
+    let contBipesArquivos = 0;
+    let contAtsArquivos = 0;
+
+    // Sincronização em tempo real bidirecional
+    db.ref().on('value', (snapshot) => {
+        const dadosNuvem = snapshot.val() || {};
         
-        const inBipes = document.getElementById('fileInputBipes');
-        const inAts = document.getElementById('fileInputAts');
-        const dzBipes = document.getElementById('dropZoneBipes');
-        const dzAts = document.getElementById('dropZoneAts');
+        bancoBipes = dadosNuvem.bancoBipes || {};
+        bancoAts = dadosNuvem.bancoAts || {};
+        bancoAtsAm = dadosNuvem.bancoAtsAm || {};
+        bancoAtsPm = dadosNuvem.bancoAtsPm || {};
+        contBipesArquivos = dadosNuvem.contBipesArquivos || 0;
+        contAtsArquivos = dadosNuvem.contAtsArquivos || 0;
 
-        if(inBipes) inBipes.addEventListener('change', (e) => { if(e.target.files.length > 0) processarGenerico(e.target.files, 'bipes'); });
-        if(dzBipes) configurarDropZone(dzBipes, 'bipes');
+        document.getElementById('statusBipes').innerText = `Total de relatórios na nuvem: ${contBipesArquivos}`;
+        document.getElementById('statusAts').innerText = `Total de relatórios na nuvem: ${contAtsArquivos}`;
 
-        if(inAts) inAts.addEventListener('change', (e) => { if(e.target.files.length > 0) processarGenerico(e.target.files, 'ats'); });
-        if(dzAts) configurarDropZone(dzAts, 'ats');
+        atualizarTelasDinamicas();
     });
-
-    function atualizarTextosInterface() {
-        const hFormatado = String(window.CONFIG_HORA_CORTE || 9).padStart(2, '0') + ":" + String(window.CONFIG_MIN_CORTE || 30).padStart(2, '0');
-        const elLegenda = document.getElementById('legendaHorario');
-        const elTituloAm = document.getElementById('tituloAm');
-        const elSubtituloAm = document.getElementById('subtituloAm');
-        
-        if(elLegenda) elLegenda.innerText = `Separação Dinâmica: AM (Até ${hFormatado}h) | PM (Após ${hFormatado}h)`;
-        if(elTituloAm) elTituloAm.innerText = `☀️ Ranking de ATs - Turno AM (${hFormatado})`;
-        if(elSubtituloAm) elSubtituloAm.innerText = `Apenas validações realizadas até às ${hFormatado}h da manhã`;
-    }
-
-    function executarRenderizacaoAtiva() {
-        if (document.getElementById('tab-dashboard-bipes').classList.contains('active')) renderizarBipes();
-        if (document.getElementById('tab-dashboard-ats').classList.contains('active')) renderizarAts();
-        if (document.getElementById('tab-dashboard-ats-am').classList.contains('active')) renderizarAtsAm();
-        if (document.getElementById('tab-dashboard-ats-pm').classList.contains('active')) renderizarAtsPm();
-    }
 
     function switchTab(tabName) {
         document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
@@ -413,22 +374,23 @@
 
         const botoes = document.querySelectorAll('.tab-button');
         if(tabName === 'importacao') {
-            if(botoes[0]) botoes[0].classList.add('active'); 
-            const tab = document.getElementById('tab-importacao'); if(tab) tab.classList.add('active');
+            botoes[0].classList.add('active'); document.getElementById('tab-importacao').classList.add('active');
         } else if(tabName === 'dashboard-bipes') {
-            if(botoes[1]) botoes[1].classList.add('active'); 
-            const tab = document.getElementById('tab-dashboard-bipes'); if(tab) tab.classList.add('active'); renderizarBipes();
+            botoes[1].classList.add('active'); document.getElementById('tab-dashboard-bipes').classList.add('active'); renderizarBipes();
         } else if(tabName === 'dashboard-ats') {
-            if(botoes[2]) botoes[2].classList.add('active'); 
-            const tab = document.getElementById('tab-dashboard-ats'); if(tab) tab.classList.add('active'); renderizarAts();
+            botoes[2].classList.add('active'); document.getElementById('tab-dashboard-ats').classList.add('active'); renderizarAts();
         } else if(tabName === 'dashboard-ats-am') {
-            if(botoes[3]) botoes[3].classList.add('active'); 
-            const tab = document.getElementById('tab-dashboard-ats-am'); if(tab) tab.classList.add('active'); renderizarAtsAm();
+            botoes[3].classList.add('active'); document.getElementById('tab-dashboard-ats-am').classList.add('active'); renderizarAtsAm();
         } else if(tabName === 'dashboard-ats-pm') {
-            if(botoes[4]) botoes[4].classList.add('active'); 
-            const tab = document.getElementById('tab-dashboard-ats-pm'); if(tab) tab.classList.add('active'); renderizarAtsPm();
+            botoes[4].classList.add('active'); document.getElementById('tab-dashboard-ats-pm').classList.add('active'); renderizarAtsPm();
         }
     }
+
+    document.getElementById('fileInputBipes').addEventListener('change', (e) => { if(e.target.files.length > 0) processarGenerico(e.target.files, 'bipes'); });
+    configurarDropZone(document.getElementById('dropZoneBipes'), 'bipes');
+
+    document.getElementById('fileInputAts').addEventListener('change', (e) => { if(e.target.files.length > 0) processarGenerico(e.target.files, 'ats'); });
+    configurarDropZone(document.getElementById('dropZoneAts'), 'ats');
 
     function configurarDropZone(elemento, tipo) {
         elemento.addEventListener('dragover', (e) => { e.preventDefault(); elemento.classList.add('dragover'); });
@@ -447,13 +409,12 @@
             if (file.name.toLowerCase().endsWith('.zip')) {
                 try {
                     const zip = await JSZip.loadAsync(file);
-                    for (let filename of Object.keys(zip.files)) {
+                    for (let filename in zip.files) {
                         if (!zip.files[filename].dir && filename.toLowerCase().endsWith('.csv')) {
                             const text = await zip.files[filename].async("string");
-                            if(analisarDados(text, tipo)) { mudou = true; }
+                            if(analisarDados(text, tipo)) { mudou = true; somarContador(tipo); }
                         }
                     }
-                    somarContador(tipo);
                 } catch (err) { mostrarErro("Erro no ZIP: " + file.name, tipo); }
             } else if (file.name.toLowerCase().endsWith('.csv')) {
                 try {
@@ -463,32 +424,30 @@
             }
         }
 
-        if (mudou && window.dbRef) {
-            // ENVIO EM BLOCOS SEPARADOS PARA O FIREBASE NÃO TRAVAR POR EXCESSO DE DADOS
-            const updates = {};
-            updates['/contBipesArquivos'] = window.contBipesArquivos;
-            updates['/contAtsArquivos'] = window.contAtsArquivos;
-            updates['/bancoBipes'] = window.bancoBipes;
-            updates['/bancoAtsRaw'] = window.bancoAtsRaw;
-
-            window.updateRef(window.refRef(window.dbRef, 'dados_ranking'), updates)
-            .then(() => {
-                if(tipo === 'bipes') {
-                    const el = document.getElementById('alertSuccessBipes'); if(el) el.style.display = 'block';
-                } else {
-                    const el = document.getElementById('alertSuccessAts'); if(el) el.style.display = 'block';
-                }
-            }).catch((err) => {
-                mostrarErro("Erro de sincronização. Reduza o tamanho dos arquivos enviados.", tipo);
-            });
+        if (mudou) {
+            if(tipo === 'bipes') {
+                db.ref().update({
+                    bancoBipes: bancoBipes,
+                    contBipesArquivos: contBipesArquivos
+                });
+                document.getElementById('alertSuccessBipes').style.display = 'block';
+            } else {
+                db.ref().update({
+                    bancoAts: bancoAts,
+                    bancoAtsAm: bancoAtsAm,
+                    bancoAtsPm: bancoAtsPm,
+                    contAtsArquivos: contAtsArquivos
+                });
+                document.getElementById('alertSuccessAts').style.display = 'block';
+            }
         }
-        const inBipes = document.getElementById('fileInputBipes'); if(inBipes) inBipes.value = "";
-        const inAts = document.getElementById('fileInputAts'); if(inAts) inAts.value = "";
+        document.getElementById('fileInputBipes').value = "";
+        document.getElementById('fileInputAts').value = "";
     }
 
     function somarContador(tipo) {
-        if (tipo === 'bipes') window.contBipesArquivos++;
-        else window.contAtsArquivos++;
+        if (tipo === 'bipes') contBipesArquivos++;
+        else contAtsArquivos++;
     }
 
     function lerTexto(file) {
@@ -520,16 +479,15 @@
 
         let alvoColuna = (tipo === 'bipes') ? 'operator' : 'validation operator';
         const idxTarget = headers.findIndex(h => h === alvoColuna);
+        
         const idxTime = headers.findIndex(h => h === 'validation end time');
 
         if (idxTarget === -1) {
+            mostrarErro(`Coluna de operador ("${alvoColuna}") não encontrada.`, tipo);
             return false;
         }
 
-        // LIMITE DE OPERAÇÃO PARA PREVENIR ERROS DE MEMÓRIA (MÁXIMO 15.000 LINHAS POR ARQUIVO)
-        const totalLinhas = Math.min(lines.length, 15000);
-
-        for (let i = 1; i < totalLinhas; i++) {
+        for (let i = 1; i < lines.length; i++) {
             const line = lines[i].trim();
             if (!line) continue;
 
@@ -538,24 +496,36 @@
                 let operadorBruto = colunas[idxTarget].trim().replace(/^["']|["']$/g, '');
                 if (operadorBruto) {
                     let operador = filtrarNomeLimpo(operadorBruto);
+                    // O Firebase não aceita chaves com caracteres especiais (., $, #, [, ], /)
+                    operador = operador.replace(/[\.\$\#\[\]\/]/g, "");
                     if (operador) {
                         if (tipo === 'bipes') {
-                            window.bancoBipes[operador] = (window.bancoBipes[operador] || 0) + 1;
+                            bancoBipes[operador] = (bancoBipes[operador] || 0) + 1;
                         } else {
-                            let minutosDoDia = -1; 
+                            bancoAts[operador] = (bancoAts[operador] || 0) + 1;
+
+                            let ePM = false; 
                             if (idxTime !== -1 && colunas.length > idxTime) {
                                 let dataHoraBruta = colunas[idxTime].trim().replace(/^["']|["']$/g, ''); 
                                 if (dataHoraBruta.includes(' ')) {
                                     let horaParte = dataHoraBruta.split(' ')[1]; 
                                     if (horaParte) {
                                         let partesRelogio = horaParte.split(':');
-                                        let h = parseInt(partesRelogio[0]); 
-                                        let m = parseInt(partesRelogio[1] || 0);
-                                        minutosDoDia = (h * 60) + m;
+                                        let apenasHora = parseInt(partesRelogio[0]); 
+                                        let apenasMinuto = parseInt(partesRelogio[1] || 0);
+                                        let totalMinutosDoDia = (apenasHora * 60) + apenasMinuto;
+                                        if (totalMinutosDoDia >= 570) { 
+                                            ePM = true; 
+                                        }
                                     }
                                 }
                             }
-                            window.bancoAtsRaw.push({operador: operador, minutosDoDia: minutosDoDia});
+
+                            if (ePM) {
+                                bancoAtsPm[operador] = (bancoAtsPm[operador] || 0) + 1;
+                            } else {
+                                bancoAtsAm[operador] = (bancoAtsAm[operador] || 0) + 1;
+                            }
                         }
                     }
                 }
@@ -577,70 +547,35 @@
 
     function renderizarBipes() {
         const grid = document.getElementById('gridBipes');
-        if(!grid) return;
-        const lista = Object.entries(window.bancoBipes || {}).sort((a, b) => b[1] - a[1]);
-        grid.innerHTML = lista.length === 0 ? '<div class="no-data">Nenhum bibe registrado na nuvem.</div>' : '';
+        const lista = Object.entries(bancoBipes).sort((a, b) => b[1] - a[1]);
+        grid.innerHTML = lista.length === 0 ? '<div class="no-data">Nenhum registro encontrado na nuvem.</div>' : '';
         distribuirEmColunasEquilibradas(grid, lista, 'bipes');
     }
 
     function renderizarAts() {
         const grid = document.getElementById('gridAts');
-        if(!grid) return;
-        let unificado = {};
-        (window.bancoAtsRaw || []).forEach((item) => {
-            if(item && item.operador) unificado[item.operador] = (unificado[item.operador] || 0) + 1;
-        });
-        const lista = Object.entries(unificado).sort((a, b) => b[1] - a[1]);
-        grid.innerHTML = lista.length === 0 ? '<div class="no-data">Nenhuma AT registrada na nuvem.</div>' : '';
+        const lista = Object.entries(bancoAts).sort((a, b) => b[1] - a[1]);
+        grid.innerHTML = lista.length === 0 ? '<div class="no-data">Nenhum registro encontrado na nuvem.</div>' : '';
         distribuirEmColunasEquilibradas(grid, lista, 'ats');
     }
 
     function renderizarAtsAm() {
         const grid = document.getElementById('gridAtsAm');
-        if(!grid) return;
-        
-        const corteMinutos = ((window.CONFIG_HORA_CORTE || 9) * 60) + (window.CONFIG_MIN_CORTE || 30);
-        let processado = {};
-        
-        (window.bancoAtsRaw || []).forEach((item) => {
-            if (!item || !item.operador || item.minutosDoDia === -1) return; 
-            if (item.minutosDoDia < corteMinutos) {
-                processado[item.operador] = (processado[item.operador] || 0) + 1;
-            }
-        });
-
-        const lista = Object.entries(processado).sort((a, b) => b[1] - a[1]);
-        const hFmt = String(window.CONFIG_HORA_CORTE || 9).padStart(2, '0') + ":" + String(window.CONFIG_MIN_CORTE || 30).padStart(2, '0');
-        
-        grid.innerHTML = lista.length === 0 ? `<div class="no-data">Nenhum registro no turno AM na nuvem (Corte: ${hFmt}).</div>` : '';
+        const lista = Object.entries(bancoAtsAm).sort((a, b) => b[1] - a[1]);
+        grid.innerHTML = lista.length === 0 ? '<div class="no-data">Nenhum registro no turno AM até às 09:30h.</div>' : '';
         distribuirEmColunasEquilibradas(grid, lista, 'ats-am');
     }
 
     function renderizarAtsPm() {
         const grid = document.getElementById('gridAtsPm');
-        if(!grid) return;
-        
-        const corteMinutos = ((window.CONFIG_HORA_CORTE || 9) * 60) + (window.CONFIG_MIN_CORTE || 30);
-        let processado = {};
-        
-        (window.bancoAtsRaw || []).forEach((item) => {
-            if (!item || !item.operador || item.minutosDoDia === -1) return; 
-            if (item.minutosDoDia >= corteMinutos) {
-                processado[item.operador] = (processado[item.operador] || 0) + 1;
-            }
-        });
-
-        const lista = Object.entries(processado).sort((a, b) => b[1] - a[1]);
-        const hFmt = String(window.CONFIG_HORA_CORTE || 9).padStart(2, '0') + ":" + String(window.CONFIG_MIN_CORTE || 30).padStart(2, '0');
-        
-        grid.innerHTML = lista.length === 0 ? `<div class="no-data">Nenhum registro no turno PM na nuvem (Corte: ${hFmt}).</div>` : '';
+        const lista = Object.entries(bancoAtsPm).sort((a, b) => b[1] - a[1]);
+        grid.innerHTML = lista.length === 0 ? '<div class="no-data">Nenhum registro no turno PM após às 09:30h.</div>' : '';
         distribuirEmColunasEquilibradas(grid, lista, 'ats-pm');
     }
 
     function distribuirEmColunasEquilibradas(elementoGrid, dados, tipo) {
         const totalItens = dados.length;
         const itensPorColuna = Math.ceil(totalItens / 4);
-        elementoGrid.innerHTML = '';
 
         for (let col = 0; col < 4; col++) {
             const inicio = col * itensPorColuna;
@@ -675,26 +610,33 @@
     }
 
     function resetarTudo() {
-        if (confirm("Quer realmente apagar DEFINITIVAMENTE o banco de dados na nuvem Firebase? Todos os computadores serão resetados.")) {
-            if (window.dbRef) {
-                window.setRef(window.refRef(window.dbRef, 'dados_ranking'), null).then(() => {
-                    limparAlertas();
-                });
-            }
+        if (confirm("Quer realmente apagar DEFINITIVAMENTE o banco de dados na NUVEM? Todos os históricos e acessos de outras pessoas serão zerados.")) {
+            db.ref().set({
+                bancoBipes: {}, bancoAts: {}, bancoAtsAm: {}, bancoAtsPm: {},
+                contBipesArquivos: 0, contAtsArquivos: 0
+            });
+            limparAlertas();
         }
     }
 
     function mostrarErro(msg, tipo) {
         const idAlvo = (tipo === 'bipes') ? 'alertErrorBipes' : 'alertErrorAts';
         const err = document.getElementById(idAlvo);
-        if(err) { err.innerText = msg; err.style.display = 'block'; }
+        err.innerText = msg; err.style.display = 'block';
     }
 
     function limparAlertas() {
-        const bS = document.getElementById('alertSuccessBipes'); if(bS) bS.style.display = 'none';
-        const bE = document.getElementById('alertErrorBipes'); if(bE) bE.style.display = 'none';
-        const aS = document.getElementById('alertSuccessAts'); if(aS) aS.style.display = 'none';
-        const aE = document.getElementById('alertErrorAts'); if(aE) aE.style.display = 'none';
+        document.getElementById('alertSuccessBipes').style.display = 'none';
+        document.getElementById('alertErrorBipes').style.display = 'none';
+        document.getElementById('alertSuccessAts').style.display = 'none';
+        document.getElementById('alertErrorAts').style.display = 'none';
+    }
+
+    function atualizarTelasDinamicas() {
+        if (document.getElementById('tab-dashboard-bipes').classList.contains('active')) renderizarBipes();
+        if (document.getElementById('tab-dashboard-ats').classList.contains('active')) renderizarAts();
+        if (document.getElementById('tab-dashboard-ats-am').classList.contains('active')) renderizarAtsAm();
+        if (document.getElementById('tab-dashboard-ats-pm').classList.contains('active')) renderizarAtsPm();
     }
 </script>
 </body>
