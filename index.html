@@ -27,11 +27,11 @@
             appId: "SEU_APP_ID"
         };
 
-        // Inicialização global do Firebase
+        // Inicialização global imediata
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
 
-        // Exportação segura para funções tradicionais do script
+        // Exportação segura e imediata para o escopo global (window)
         window.bancoBipes = {};
         window.bancoAtsRaw = [];
         window.contBipesArquivos = 0;
@@ -42,7 +42,7 @@
         window.refRef = ref;
         window.setRef = set;
 
-        // Ouvinte em tempo real da nuvem
+        // Ouvinte em tempo real oficial da nuvem Firebase
         onValue(ref(db, 'dados_ranking'), (snapshot) => {
             const data = snapshot.val();
             if (data) {
@@ -57,17 +57,14 @@
                 window.contAtsArquivos = 0;
             }
             
-            // Atualiza os contadores na tela principal
+            // Atualiza os indicadores de texto na tela de importação
             const elBipes = document.getElementById('statusBipes');
             const elAts = document.getElementById('statusAts');
             if(elBipes) elBipes.innerText = `Total de relatórios na nuvem: ${window.contBipesArquivos}`;
             if(elAts) elAts.innerText = `Total de relatórios na nuvem: ${window.contAtsArquivos}`;
             
-            // Força a renderização automática conforme a aba que está aberta
-            if (document.getElementById('tab-dashboard-bipes').classList.contains('active')) renderizarBipes();
-            if (document.getElementById('tab-dashboard-ats').classList.contains('active')) renderizarAts();
-            if (document.getElementById('tab-dashboard-ats-am').classList.contains('active')) renderizarAtsAm();
-            if (document.getElementById('tab-dashboard-ats-pm').classList.contains('active')) renderizarAtsPm();
+            // Força o refresco visual imediato na tela baseada na aba ativa
+            executarRenderizacaoAtiva();
         });
     </script>
 
@@ -403,6 +400,13 @@
         if(elLegenda) elLegenda.innerText = `Separação Dinâmica: AM (Até ${hFormatado}h) | PM (Após ${hFormatado}h)`;
         if(elTituloAm) elTituloAm.innerText = `☀️ Ranking de ATs - Turno AM (${hFormatado})`;
         if(elSubtituloAm) elSubtituloAm.innerText = `Apenas validações realizadas até às ${hFormatado}h da manhã`;
+    }
+
+    function executarRenderizacaoAtiva() {
+        if (document.getElementById('tab-dashboard-bipes').classList.contains('active')) renderizarBipes();
+        if (document.getElementById('tab-dashboard-ats').classList.contains('active')) renderizarAts();
+        if (document.getElementById('tab-dashboard-ats-am').classList.contains('active')) renderizarAtsAm();
+        if (document.getElementById('tab-dashboard-ats-pm').classList.contains('active')) renderizarAtsPm();
     }
 
     function switchTab(tabName) {
