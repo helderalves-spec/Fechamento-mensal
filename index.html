@@ -11,13 +11,12 @@
         import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
 
         // ==========================================
-        // CONFIGURAÇÃO CONFIGURÁVEL DO SEU TURNO
+        // CONFIGURAÇÃO DE TURNO (AJUSTE SE PRECISAR)
         // ==========================================
-        const CONFIG_HORA_CORTE = 9;   // Hora (Ex: 9)
-        const CONFIG_MIN_CORTE  = 30;  // Minuto (Ex: 30)
-        // ==========================================
+        const CONFIG_HORA_CORTE = 9;   
+        const CONFIG_MIN_CORTE  = 30;  
 
-        // CONFIGURAÇÕES DO SEU FIREBASE (LEMBRE DE COLOVAR AS SUAS CREDENCIAIS AQUI)
+        // INSIRA SUAS CREDENCIAIS DO FIREBASE LOGO ABAIXO:
         const firebaseConfig = {
             apiKey: "SEU_API_KEY",
             authDomain: "SEU_AUTH_DOMAIN",
@@ -28,11 +27,11 @@
             appId: "SEU_APP_ID"
         };
 
-        // Inicializa o Firebase e o Banco de Dados Realtime
+        // Inicialização do ecossistema
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
 
-        // Vincula as variáveis ao escopo do navegador (window) de forma segura
+        // Globais compartilhadas com as funções legadas da página
         window.bancoBipes = {};
         window.bancoAtsRaw = [];
         window.contBipesArquivos = 0;
@@ -43,14 +42,7 @@
         window.refRef = ref;
         window.setRef = set;
 
-        // Regra de segurança local para prevenir requisições se passar da data limite informada (19/07/2026)
-        const dataLimite = new Date(2026, 6, 19); // Nota: Meses no JS começam em 0 (6 = Julho)
-        if (new Date() > dataLimite) {
-            console.error("As regras de teste do Firebase expiraram! Atualize as regras no console.");
-            alert("Atenção: A licença temporária do banco de dados expirou. Atualize as regras no console do Firebase.");
-        }
-
-        // ESCUTADOR EM TEMPO REAL: Monitora modificações na nuvem para atualizar instantaneamente todos os usuários
+        // Ouvinte em tempo real da nuvem
         onValue(ref(db, 'dados_ranking'), (snapshot) => {
             const data = snapshot.val();
             if (data) {
@@ -65,18 +57,20 @@
                 window.contAtsArquivos = 0;
             }
             
+            // Atualiza indicadores do painel de importação
             const elBipes = document.getElementById('statusBipes');
             const elAts = document.getElementById('statusAts');
             if(elBipes) elBipes.innerText = `Total de relatórios na nuvem: ${window.contBipesArquivos}`;
             if(elAts) elAts.innerText = `Total de relatórios na nuvem: ${window.contAtsArquivos}`;
             
-            const contentAtivo = document.querySelector('.tab-content.active');
-            if (contentAtivo) {
-                const abaAtiva = contentAtivo.id;
-                if (abaAtiva === 'tab-dashboard-bipes') renderizarBipes();
-                if (abaAtiva === 'tab-dashboard-ats') renderizarAtsGeral();
-                if (abaAtiva === 'tab-dashboard-ats-am') renderizarAtsTurnos('AM');
-                if (abaAtiva === 'tab-dashboard-ats-pm') renderizarAtsTurnos('PM');
+            // Recarrega dinamicamente os rankings visuais ativos
+            const containerAtivo = document.querySelector('.tab-content.active');
+            if (containerAtivo) {
+                const idAba = containerAtivo.id;
+                if (idAba === 'tab-dashboard-bipes') renderizarBipes();
+                if (idAba === 'tab-dashboard-ats') renderizarAtsGeral();
+                if (idAba === 'tab-dashboard-ats-am') renderizarAtsTurnos('AM');
+                if (idAba === 'tab-dashboard-ats-pm') renderizarAtsTurnos('PM');
             }
         });
     </script>
